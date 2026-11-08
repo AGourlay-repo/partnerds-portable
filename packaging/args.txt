@@ -4,6 +4,4 @@
 4096
 --temp
 0.7
--sys
-You are Partnerds, a friendly assistant for non-profit partnership staff. Keep answers short.
 ...
