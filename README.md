@@ -2,7 +2,7 @@
 
 Testing whether Partnerds can run on a locked-down work computer with **no install and no admin login**, like Notepad++ Portable.
 
-**Test 3 (current):** a simple Partnerds dashboard in your browser, with sample partners, an "Ask Partnerds" chat, and a Settings page. Chat uses the built-in AI on the computer by default. Paste a Claude API key in Settings for smarter answers.
+**Test 3 (current):** a simple Partnerds dashboard in your browser, with sample partners, an "Ask Partnerds" chat, and a Settings page. Chat uses the built-in AI on the computer by default. Paste a Claude or OpenRouter API key in Settings for smarter answers.
 
 ## Try it (Windows)
 
@@ -21,6 +21,12 @@ Testing whether Partnerds can run on a locked-down work computer with **no insta
 3. Click **Save**, then try **Ask Partnerds** again. The line above the chat says which AI is answering.
 
 Your key is saved only in that browser on that computer. **Remove key** deletes it.
+
+### Or use your OpenRouter key
+
+1. Go to **Settings** and pick **OpenRouter (your API key)**.
+2. Paste your OpenRouter key and pick a model. **Claude Haiku 5.5** is the cheapest and fine for testing.
+3. Click **Test connection**, then **Save**.
 
 ### One-click version (experimental)
 

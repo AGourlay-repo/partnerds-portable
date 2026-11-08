@@ -113,6 +113,11 @@
           <div><b>Claude (your API key)</b><small>Much smarter. Needs internet and a Claude API key. Messages go to Anthropic.</small></div>
         </label>
 
+        <label class="choice" id="choiceOpenrouter">
+          <input type="radio" name="ai" value="openrouter">
+          <div><b>OpenRouter (your API key)</b><small>Uses your OpenRouter credits. Needs internet. Messages go to OpenRouter and the model's maker.</small></div>
+        </label>
+
         <div id="claudeFields">
           <div class="field">
             <label for="apiKey">Claude API key</label>
@@ -124,6 +129,22 @@
             <select id="model">
               <option value="claude-opus-5-5">Claude Opus 5.5 (smartest)</option>
               <option value="claude-haiku-5-5">Claude Haiku 5.5 (fastest, cheapest)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="openrouterFields">
+          <div class="field">
+            <label for="orKey">OpenRouter API key</label>
+            <input type="password" id="orKey" placeholder="sk-or-…" autocomplete="off">
+            <div class="hint">Saved only in this browser on this computer. Create one at openrouter.ai/keys.</div>
+          </div>
+          <div class="field">
+            <label for="orModel">Model</label>
+            <select id="orModel">
+              <option value="anthropic/claude-haiku-5.5">Claude Haiku 5.5 (cheapest, good for testing)</option>
+              <option value="anthropic/claude-sonnet-5.5">Claude Sonnet 5.5 (balanced)</option>
+              <option value="anthropic/claude-opus-5.5">Claude Opus 5.5 (smartest)</option>
             </select>
           </div>
         </div>
@@ -203,37 +224,54 @@ function setStatus(cls, text) { $("statusDot").className = "dot " + cls; $("stat
 
 // ---- Settings ----
 const mode = () => store.get("pd.mode", "local");
+const picked = () => document.querySelector("input[name=ai]:checked").value;
+function highlightChoice(m) {
+  $("choiceLocal").classList.toggle("on", m === "local");
+  $("choiceClaude").classList.toggle("on", m === "claude");
+  $("choiceOpenrouter").classList.toggle("on", m === "openrouter");
+  $("claudeFields").hidden = m !== "claude";
+  $("openrouterFields").hidden = m !== "openrouter";
+}
 function renderSettings() {
   const m = mode();
   for (const r of document.querySelectorAll("input[name=ai]")) r.checked = r.value === m;
-  $("choiceLocal").classList.toggle("on", m === "local");
-  $("choiceClaude").classList.toggle("on", m === "claude");
+  highlightChoice(m);
   $("apiKey").value = store.get("pd.key", "");
   $("model").value = store.get("pd.model", "claude-opus-5-5");
+  $("orKey").value = store.get("pd.orKey", "");
+  $("orModel").value = store.get("pd.orModel", "anthropic/claude-haiku-5.5");
   renderChatMode();
 }
+const modelName = (select) => select.selectedOptions[0].text.replace(/ \(.*/, "");
 function renderChatMode() {
-  $("chatMode").textContent = mode() === "claude"
-    ? "Answering with Claude (" + $("model").selectedOptions[0].text.replace(/ \(.*/, "") + "). Change this in Settings."
-    : "Answering with the built-in AI on this computer. Add a Claude key in Settings for smarter answers.";
+  const m = mode();
+  $("chatMode").textContent =
+    m === "claude" ? "Answering with " + modelName($("model")) + " (your Claude key). Change this in Settings."
+    : m === "openrouter" ? "Answering with " + modelName($("orModel")) + " through OpenRouter. Change this in Settings."
+    : "Answering with the built-in AI on this computer. Add an API key in Settings for smarter answers.";
 }
-for (const r of document.querySelectorAll("input[name=ai]")) r.onchange = () => {
-  $("choiceLocal").classList.toggle("on", r.value === "local" && r.checked);
-  $("choiceClaude").classList.toggle("on", r.value === "claude" && r.checked);
-};
+for (const r of document.querySelectorAll("input[name=ai]")) r.onchange = () => highlightChoice(picked());
 function note(text, ok) { const n = $("note"); n.textContent = text; n.className = "note show " + (ok ? "ok" : "bad"); }
+function keep(name, value) { value ? store.set(name, value) : store.remove(name); }
 function save() {
-  const picked = document.querySelector("input[name=ai]:checked").value;
+  const m = picked();
   const key = $("apiKey").value.trim();
-  if (picked === "claude" && !key) return note("Paste your Claude API key first.", false), false;
-  store.set("pd.mode", picked);
-  key ? store.set("pd.key", key) : store.remove("pd.key");
+  const orKey = $("orKey").value.trim();
+  if (m === "claude" && !key) return note("Paste your Claude API key first.", false), false;
+  if (m === "openrouter" && !orKey) return note("Paste your OpenRouter API key first.", false), false;
+  store.set("pd.mode", m);
+  keep("pd.key", key);
+  keep("pd.orKey", orKey);
   store.set("pd.model", $("model").value);
+  store.set("pd.orModel", $("orModel").value);
   renderChatMode();
   return true;
 }
 $("saveBtn").onclick = () => { if (save()) note("Saved.", true); };
-$("forgetBtn").onclick = () => { store.remove("pd.key"); store.set("pd.mode", "local"); renderSettings(); note("Key removed. Using the built-in AI.", true); };
+$("forgetBtn").onclick = () => {
+  store.remove("pd.key"); store.remove("pd.orKey"); store.set("pd.mode", "local");
+  renderSettings(); note("Keys removed. Using the built-in AI.", true);
+};
 $("testBtn").onclick = async () => {
   if (!save()) return;
   note("Testing…", true);
@@ -287,7 +325,34 @@ async function askClaude(history) {
   return data.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
 }
 
-const ask = (history) => (mode() === "claude" ? askClaude(history) : askLocal(history));
+async function askOpenRouter(history) {
+  const key = store.get("pd.orKey", "");
+  if (!key) throw new Error("No OpenRouter API key saved. Add one in Settings.");
+  let r;
+  try {
+    r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key, "X-Title": "Partnerds" },
+      body: JSON.stringify({
+        model: store.get("pd.orModel", "anthropic/claude-haiku-5.5"),
+        max_tokens: 2000,
+        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
+      }),
+    });
+  } catch {
+    throw new Error("Couldn't reach OpenRouter. This computer may be offline, or the work network may block openrouter.ai.");
+  }
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error("OpenRouter didn't accept that API key. Check it in Settings.");
+  if (r.status === 402) throw new Error("OpenRouter says this key is out of credits (or over its spending limit).");
+  if (!r.ok) throw new Error("OpenRouter returned an error (" + r.status + "): " + (data.error?.message || "unknown"));
+  return (data.choices?.[0]?.message?.content || "").trim();
+}
+
+const ask = (history) => {
+  const m = mode();
+  return m === "claude" ? askClaude(history) : m === "openrouter" ? askOpenRouter(history) : askLocal(history);
+};
 
 const history = [];
 function addMsg(kind, text) {
