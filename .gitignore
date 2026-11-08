@@ -1,0 +1,4 @@
+*.exe
+*.gguf
+*.zip
+.DS_Store
