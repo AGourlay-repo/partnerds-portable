@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partnerds</title>
+<style>
+  :root {
+    --bg: #f6f7f4; --panel: #ffffff; --ink: #1d2420; --muted: #5d6a63;
+    --line: #e2e6e1; --brand: #1f6f50; --brand-ink: #ffffff; --brand-soft: #e5f1eb;
+    --warn: #9a5b00; --warn-soft: #fbf0dd; --bad: #a3322a; --bad-soft: #fbe6e4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  nav { background: var(--panel); border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .logo { font-weight: 700; font-size: 20px; color: var(--brand); padding: 0 10px 18px; }
+  nav button { all: unset; cursor: pointer; padding: 10px 12px; border-radius: 8px; color: var(--muted); font-weight: 500; }
+  nav button:hover { background: var(--bg); }
+  nav button.active { background: var(--brand-soft); color: var(--brand); }
+  .ai-status { margin-top: auto; font-size: 13px; color: var(--muted); padding: 10px 12px; border-top: 1px solid var(--line); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #b8bfb9; }
+  .dot.ok { background: #2e9b6a; } .dot.wait { background: #d9a03a; }
+  main { padding: 28px 32px; max-width: 1000px; width: 100%; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 2px; font-size: 16px; }
+  .card .program { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .row { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; }
+  .row span:first-child { color: var(--muted); }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .pill.active { background: var(--brand-soft); color: var(--brand); }
+  .pill.renewal { background: var(--warn-soft); color: var(--warn); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .chat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 420px; }
+  .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .msgs { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 78%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; }
+  .msg.user { align-self: flex-end; background: var(--brand); color: var(--brand-ink); }
+  .msg.bot { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); }
+  .msg.err { align-self: flex-start; background: var(--bad-soft); color: var(--bad); }
+  .msg .who { display: block; font-size: 11px; font-weight: 600; opacity: .7; margin-bottom: 2px; }
+  form.send { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  input[type=text], input[type=password], select { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); width: 100%; }
+  .btn { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 8px; border: 0; background: var(--brand); color: var(--brand-ink); cursor: pointer; white-space: nowrap; }
+  .btn.ghost { background: transparent; color: var(--brand); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .settings { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; max-width: 620px; }
+  .choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; cursor: pointer; }
+  .choice.on { border-color: var(--brand); background: var(--brand-soft); }
+  .choice small { color: var(--muted); display: block; }
+  .field { margin: 16px 0; }
+  .field label { display: block; font-weight: 600; margin-bottom: 6px; }
+  .field .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .note { margin-top: 14px; font-size: 14px; padding: 10px 12px; border-radius: 8px; display: none; }
+  .note.show { display: block; } .note.ok { background: var(--brand-soft); color: var(--brand); } .note.bad { background: var(--bad-soft); color: var(--bad); }
+  [hidden] { display: none !important; }
+  @media (max-width: 720px) {
+    .app { grid-template-columns: 1fr; }
+    nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; }
+    .logo { padding: 8px 10px 8px 0; } .ai-status { display: none; }
+    main { padding: 20px 16px; } .stats { grid-template-columns: 1fr; } .msg { max-width: 92%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav>
+    <div class="logo">Partnerds</div>
+    <button data-view="portfolio" class="active">Portfolio</button>
+    <button data-view="ask">Ask Partnerds</button>
+    <button data-view="settings">Settings</button>
+    <div class="ai-status"><span class="dot" id="statusDot"></span><span id="statusText">Checking AI…</span></div>
+  </nav>
+
+  <main>
+    <section id="view-portfolio">
+      <h1>Portfolio</h1>
+      <p class="sub">Sample partners for this test. Your real partners come later.</p>
+      <div class="stats" id="stats"></div>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <section id="view-ask" hidden>
+      <h1>Ask Partnerds</h1>
+      <p class="sub">Ask anything, or ask about the sample partners.</p>
+      <div class="chat">
+        <div class="chat-head" id="chatMode"></div>
+        <div class="msgs" id="msgs"></div>
+        <form class="send" id="sendForm">
+          <input type="text" id="prompt" placeholder="Type a message, like hello" autocomplete="off">
+          <button class="btn" id="sendBtn">Send</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-settings" hidden>
+      <h1>Settings</h1>
+      <p class="sub">Choose which AI answers in Ask Partnerds.</p>
+      <div class="settings">
+        <label class="choice" id="choiceLocal">
+          <input type="radio" name="ai" value="local">
+          <div><b>Built-in AI</b><small>Runs on this computer. Private and free, but basic.</small></div>
+        </label>
+        <label class="choice" id="choiceClaude">
+          <input type="radio" name="ai" value="claude">
+          <div><b>Claude (your API key)</b><small>Much smarter. Needs internet and a Claude API key. Messages go to Anthropic.</small></div>
+        </label>
+
+        <div id="claudeFields">
+          <div class="field">
+            <label for="apiKey">Claude API key</label>
+            <input type="password" id="apiKey" placeholder="sk-ant-…" autocomplete="off">
+            <div class="hint">Saved only in this browser on this computer. Get one at console.anthropic.com.</div>
+          </div>
+          <div class="field">
+            <label for="model">Claude model</label>
+            <select id="model">
+              <option value="claude-opus-5-5">Claude Opus 5.5 (smartest)</option>
+              <option value="claude-haiku-5-5">Claude Haiku 5.5 (fastest, cheapest)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" id="saveBtn">Save</button>
+          <button class="btn ghost" id="testBtn">Test connection</button>
+          <button class="btn ghost" id="forgetBtn">Remove key</button>
+        </div>
+        <div class="note" id="note"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const PARTNERS = [
+  { name: "Riverbend Brewing", program: "Sip & Support", status: "Active", value: 25000, renews: "2027-03-31", contact: "Dana Lee" },
+  { name: "Northwind Outfitters", program: "Shop & Support", status: "Renewal due", value: 40000, renews: "2026-12-15", contact: "Sam Patel" },
+  { name: "Prairie Coffee Co.", program: "Shop & Support", status: "Active", value: 12000, renews: "2027-06-30", contact: "Alex Chen" },
+  { name: "Coastal Cider House", program: "Sip & Support", status: "Renewal due", value: 8000, renews: "2027-01-10", contact: "Jordan Brooks" },
+];
+
+const SYSTEM_PROMPT = "You are Partnerds, a friendly assistant for non-profit staff who manage brand partnerships. " +
+  "Keep answers short and plain. Here is the user's partner portfolio as JSON: " + JSON.stringify(PARTNERS);
+
+// Saved settings live in this browser only.
+const store = {
+  get(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch {} },
+  remove(key) { try { localStorage.removeItem(key); } catch {} },
+};
+
+const $ = (id) => document.getElementById(id);
+const money = (n) => "$" + n.toLocaleString("en-CA");
+const prettyDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+
+function renderPortfolio() {
+  const total = PARTNERS.reduce((s, p) => s + p.value, 0);
+  const due = PARTNERS.filter((p) => p.status === "Renewal due").length;
+  $("stats").innerHTML = `
+    <div class="stat"><b>${PARTNERS.length}</b><span>Partners</span></div>
+    <div class="stat"><b>${money(total)}</b><span>Yearly value</span></div>
+    <div class="stat"><b>${due}</b><span>Renewals due</span></div>`;
+  $("cards").innerHTML = PARTNERS.map((p) => `
+    <div class="card">
+      <h3>${p.name}</h3>
+      <div class="program">${p.program}</div>
+      <div class="row"><span>Status</span><span class="pill ${p.status === "Active" ? "active" : "renewal"}">${p.status}</span></div>
+      <div class="row"><span>Value</span><span>${money(p.value)}</span></div>
+      <div class="row"><span>Renews</span><span>${prettyDate(p.renews)}</span></div>
+      <div class="row"><span>Contact</span><span>${p.contact}</span></div>
+    </div>`).join("");
+}
+
+function show(view) {
+  for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.view === view);
+  for (const s of document.querySelectorAll("main section")) s.hidden = s.id !== "view-" + view;
+  if (view === "ask") $("prompt").focus();
+}
+for (const b of document.querySelectorAll("nav button")) b.onclick = () => show(b.dataset.view);
+
+// ---- Built-in AI status ----
+let localReady = false;
+async function checkLocal() {
+  try {
+    const r = await fetch("/health", { cache: "no-store" });
+    localReady = r.ok;
+    setStatus(r.ok ? "ok" : "wait", r.ok ? "Built-in AI ready" : "Built-in AI loading…");
+  } catch {
+    localReady = false;
+    setStatus("", "Built-in AI not running");
+  }
+  if (!localReady) setTimeout(checkLocal, 2000);
+}
+function setStatus(cls, text) { $("statusDot").className = "dot " + cls; $("statusText").textContent = text; }
+
+// ---- Settings ----
+const mode = () => store.get("pd.mode", "local");
+function renderSettings() {
+  const m = mode();
+  for (const r of document.querySelectorAll("input[name=ai]")) r.checked = r.value === m;
+  $("choiceLocal").classList.toggle("on", m === "local");
+  $("choiceClaude").classList.toggle("on", m === "claude");
+  $("apiKey").value = store.get("pd.key", "");
+  $("model").value = store.get("pd.model", "claude-opus-5-5");
+  renderChatMode();
+}
+function renderChatMode() {
+  $("chatMode").textContent = mode() === "claude"
+    ? "Answering with Claude (" + $("model").selectedOptions[0].text.replace(/ \(.*/, "") + "). Change this in Settings."
+    : "Answering with the built-in AI on this computer. Add a Claude key in Settings for smarter answers.";
+}
+for (const r of document.querySelectorAll("input[name=ai]")) r.onchange = () => {
+  $("choiceLocal").classList.toggle("on", r.value === "local" && r.checked);
+  $("choiceClaude").classList.toggle("on", r.value === "claude" && r.checked);
+};
+function note(text, ok) { const n = $("note"); n.textContent = text; n.className = "note show " + (ok ? "ok" : "bad"); }
+function save() {
+  const picked = document.querySelector("input[name=ai]:checked").value;
+  const key = $("apiKey").value.trim();
+  if (picked === "claude" && !key) return note("Paste your Claude API key first.", false), false;
+  store.set("pd.mode", picked);
+  key ? store.set("pd.key", key) : store.remove("pd.key");
+  store.set("pd.model", $("model").value);
+  renderChatMode();
+  return true;
+}
+$("saveBtn").onclick = () => { if (save()) note("Saved.", true); };
+$("forgetBtn").onclick = () => { store.remove("pd.key"); store.set("pd.mode", "local"); renderSettings(); note("Key removed. Using the built-in AI.", true); };
+$("testBtn").onclick = async () => {
+  if (!save()) return;
+  note("Testing…", true);
+  try {
+    const reply = await ask([{ role: "user", content: "Say hello in five words or fewer." }]);
+    note("It works. Reply: " + reply, true);
+  } catch (e) { note(e.message, false); }
+};
+
+// ---- Talking to the AI ----
+async function askLocal(history) {
+  if (!localReady) throw new Error("The built-in AI is still loading or isn't running. Keep the Partnerds window open and try again in a moment.");
+  const r = await fetch("/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history], max_tokens: 512 }),
+  });
+  if (!r.ok) throw new Error("The built-in AI had a problem (" + r.status + ").");
+  const data = await r.json();
+  return data.choices[0].message.content.trim();
+}
+
+async function askClaude(history) {
+  const key = store.get("pd.key", "");
+  if (!key) throw new Error("No Claude API key saved. Add one in Settings.");
+  let r;
+  try {
+    r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2026-10-21",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: store.get("pd.model", "claude-opus-5-5"),
+        max_tokens: 16000,
+        output_config: { effort: "low" },
+        system: SYSTEM_PROMPT,
+        messages: history,
+      }),
+    });
+  } catch {
+    throw new Error("Couldn't reach Claude. This computer may be offline, or the work network may block api.anthropic.com.");
+  }
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error("Claude didn't accept that API key. Check it in Settings.");
+  if (!r.ok) throw new Error("Claude returned an error (" + r.status + "): " + (data.error?.message || "unknown"));
+  if (data.stop_reason === "refusal") throw new Error("Claude declined to answer that one.");
+  return data.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+}
+
+const ask = (history) => (mode() === "claude" ? askClaude(history) : askLocal(history));
+
+const history = [];
+function addMsg(kind, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + kind;
+  const who = document.createElement("span");
+  who.className = "who";
+  who.textContent = kind === "user" ? "You" : kind === "bot" ? "Partnerds" : "Problem";
+  div.append(who, document.createTextNode(text));
+  $("msgs").append(div);
+  $("msgs").scrollTop = $("msgs").scrollHeight;
+  return div;
+}
+
+$("sendForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const text = $("prompt").value.trim();
+  if (!text) return;
+  $("prompt").value = "";
+  addMsg("user", text);
+  history.push({ role: "user", content: text });
+  $("sendBtn").disabled = true;
+  const thinking = addMsg("bot", "Thinking…");
+  try {
+    const reply = await ask(history);
+    thinking.remove();
+    addMsg("bot", reply);
+    history.push({ role: "assistant", content: reply });
+  } catch (err) {
+    thinking.remove();
+    history.pop();
+    addMsg("err", err.message);
+  } finally {
+    $("sendBtn").disabled = false;
+    $("prompt").focus();
+  }
+};
+
+renderPortfolio();
+renderSettings();
+checkLocal();
+</script>
+</body>
+</html>
